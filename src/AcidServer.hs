@@ -1,5 +1,6 @@
 module AcidServer (
     AcidServer
+  , withAcidServer
   , open
   , save
   , top
@@ -15,6 +16,7 @@ module AcidServer (
 import Data.Acid
 import Data.SafeCopy
 import Data.Typeable
+import Control.Exception
 import Control.Monad.State
 import Control.Monad.Reader
 
@@ -48,6 +50,9 @@ internalAll = do
 $(makeAcidic ''All ['internalAll, 'internalSave, 'internalTop])
 
 data AcidServer = AcidServer (Maybe Slots) (AcidState All)
+
+withAcidServer :: Maybe Slots -> (AcidServer -> IO a) -> IO a
+withAcidServer s f = bracket (open s) close f
 
 open :: Maybe Slots -> IO AcidServer
 open s = do
