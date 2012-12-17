@@ -1,25 +1,15 @@
 module Main (main) where
 
-import System.Environment
+import Control.Concurrent.Async
+import Data.Functor
 
-import qualified AcidServer as AS
-import qualified WebServer as Web
+import AcidServer
+import DataSource
+import WebServer
 
 
 main :: IO ()
-main = do
-  args <- getArgs
-  acid <- AS.open (Just 30)
-  Web.start
-  case args of
-    ["top"] -> do
-      xs <- AS.top acid "country"
-      putStrLn $ show xs
-    ["all"] -> do
-      xs <- AS.all acid
-      putStrLn $ show xs
-    ["save"] -> do
-      c <- getContents
-      mapM_ (\e -> AS.save acid "country" (e, 1, 11)) $ lines c
-    _ -> do putStrLn "Use it properly!"
-  AS.close acid
+main = withAcidServer 100 (\t -> t - 36000) $ \acid -> do
+  _ <- concurrently (DataSource.listen acid (lines <$> getContents) parsePair)
+                    (WebServer.start 8000 acid)
+  return ()

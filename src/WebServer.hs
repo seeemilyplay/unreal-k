@@ -19,20 +19,20 @@ start p acid = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
       xs <- AcidServer.top acid k
       return $ sendJSON [(k, xs)]
 
-instance ToJSON (Key, [Item]) where
-  toJSON (k, xs) = object [
+instance ToJSON (Key, Top) where
+  toJSON (k, (c,xs)) = object [
       "key" .= toJSON k
+    , "count" .= toJSON c
     , "top" .= toJSON xs
     ]
 
-instance ToJSON Item where
-  toJSON (e, c, t) = object [
+instance ToJSON (Element,Count) where
+  toJSON (e, c) = object [
       "element" .= e
     , "count" .= c
-    , "time" .= t
     ]
 
-sendJSON :: [(Key, [Item])] -> Response String
+sendJSON :: [(Key, Top)] -> Response String
 sendJSON v =
   insertHeader HdrContentType "application/json"
     $ (respond OK :: Response String) {

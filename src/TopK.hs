@@ -1,75 +1,160 @@
 module TopK ( Slots
+            , Period
+            , Key
+            , Element
             , Time
             , Count
-            , Element
-            , Key
             , Item
+            , Entry(..)
             , TopK(..)
-            , empty
             , topK
+            , create
             , increment) where
 
 import Data.List
 import Data.Ord
 import Data.Typeable
 
-
 type Slots = Int
+type Period = Time
+type Key = String
+type Element = String
 type Time = Int
 type Count = Int
-type Element = String
-type Key = String
 type Item = (Element, Count, Time)
 
-data TopK = TopK Key [Item] [Item]
-  deriving (Show, Typeable)
 
-empty :: Key -> TopK
-empty k = TopK k [] []
+data Entry = Entry {
+    eelement :: Element
+  , efrom :: Time
+  , eto :: Time
+  , ecount :: Count
+} deriving (Show, Typeable)
 
-topK :: TopK -> [Item]
-topK (TopK _ _ xs) = sortBy comparingCount xs
+data TopK = TopK {
+    tkkey :: Key
+  , tkfrom :: Time
+  , tkto :: Time
+  , tkcount :: Count
+  , tkrecent :: [Entry]
+  , tktop :: [Entry]
+} deriving (Show, Typeable)
 
-increment :: Maybe Slots -> Item -> TopK -> TopK
-increment s x (TopK k xs ys) =
-  let (xs', ys') = agreeAndCull s (add x xs) ys in
-  TopK k xs' ys'
+topK :: TopK -> (Count,[(Element,Count)])
+topK tk = (tkcount tk, map (\e -> (eelement e, ecount e)) $ tktop tk)
 
-add :: Item -> [Item] -> [Item]
-add x xs = updateOrInsert x xs $ \c origc -> c + origc
+create :: Key -> Item -> TopK
+create k (e, c, t) =
+  TopK {
+    tkkey = k
+  , tkfrom = t
+  , tkto = t
+  , tkcount = c
+  , tkrecent = [en]
+  , tktop = [en]
+  }
+  where
+    en = Entry {
+      eelement = e
+    , efrom = t
+    , eto = t
+    , ecount = c
+    }
 
-agreeAndCull :: Maybe Slots -> [Item] -> [Item] -> ([Item], [Item])
-agreeAndCull s xs ys =
-  let ys' = foldr shunt ys xs
-      xs' = foldr washBack xs ys'
-  in (cullBy comparingTime s xs', cullBy comparingCount s ys')
+increment :: Slots -> Period -> Item -> TopK -> TopK
+increment _ _ (_, _, t) tk | t < tkfrom tk = tk
+increment s p (e, c, t) tk =
+  (cull s . add en $ scale p t tk) {
+    tkcount = (tkcount tk) + c
+  }
+  where
+    en = Entry {
+      eelement = e
+    , efrom = t
+    , eto = t
+    , ecount = c
+    }
 
-shunt :: Item -> [Item] -> [Item]
-shunt x xs = updateOrInsert x xs $ \c origc -> max c origc
+cull :: Slots -> TopK -> TopK
+cull s tk =
+  tk {
+    tkrecent = take s (tkrecent tk)
+  , tktop = take s (tktop tk)
+  }
 
-washBack :: Item -> [Item] -> [Item]
-washBack x xs = update x xs $ \c origc -> if origc < c then c + origc else c
+class Addable a b where
+  add :: a -> b -> b
 
-update :: Item -> [Item] -> (Count -> Count -> Count) -> [Item]
-update (e, c, t) xs combine =
-  case partition (\(e', _, _) -> e'==e) xs of
-    ([], xs') -> xs'
-    ((_, c', t'):[], xs') -> (e, combine c c', max t t') : xs'
-    _ -> error "can't update, more than one matching element"
+instance Addable Entry TopK where
+  add e tk =
+    let tkrecent' = add e (tkrecent tk)
+        tktop' = add e (tktop tk) in
+    tk {
+      tkfrom = min (efrom e) (tkfrom tk)
+    , tkto = max (eto e) (tkto tk)
+    , tkrecent = tkrecent'
+    , tktop = sortBy (comparing ((*) (-1) . ecount)) $ add (head tkrecent') tktop'
+    }
 
-updateOrInsert :: Item -> [Item] -> (Count -> Count -> Count) -> [Item]
-updateOrInsert (e, c, t) xs combine =
-  case partition (\(e', _, _) -> e'==e) xs of
-    ([], xs') -> (e, c, t) : xs'
-    ((_, c', t'):[], xs') -> (e, combine c c', max t t') : xs'
-    _ -> error "can't update or insert, more than one matching element"
+instance Addable Entry [Entry] where
+  add e es =
+    case find ((==) (eelement e) . eelement) es of
+      Nothing -> e : es
+      Just e' -> (add e e') : filter ((/=) (eelement e) . eelement) es
 
-cullBy :: (a -> a -> Ordering) -> Maybe Int -> [a] -> [a]
-cullBy comp (Just s) xs = take s $ sortBy comp xs
-cullBy _ Nothing xs = xs
+instance Addable Entry Entry where
+  add e e' | (eelement e) == (eelement e') = e {
+      efrom = min (efrom e) (efrom e')
+    , eto = max (eto e) (eto e')
+    , ecount = (ecount e) + (ecount e')
+    }
+  add _ _ = error "elements don't match"
 
-comparingCount :: Item -> Item -> Ordering
-comparingCount = comparing (\(_, c, _) -> (-1) * c)
+class Mergeable a b where
+  merge :: a -> b -> b
 
-comparingTime :: Item -> Item -> Ordering
-comparingTime = comparing (\(_, _, t) -> (-1) * t)
+instance Mergeable Entry [Entry] where
+  merge e es =
+    case find ((==) (eelement e) . eelement) es of
+      Nothing -> e : es
+      Just e' -> (merge e e') : filter ((/=) (eelement e) . eelement) es
+
+instance Mergeable Entry Entry where
+  merge e e' | (eelement e) == (eelement e') = e {
+      efrom = min (efrom e) (efrom e')
+    , eto = max (eto e) (eto e')
+    , ecount = max (ecount e) (ecount e')
+    }
+  merge _ _ = error "elements don't match"
+
+class Timed a where
+  scale :: Time -> Time -> a -> a
+
+instance (Timed a) => Timed [a] where
+  scale f t = map (scale f t)
+
+instance Timed TopK where
+  scale f t tk | f <= (tkfrom tk) = tk {
+      tkto = max t (tkto tk)
+    }
+  scale f t tk =
+    let x = (tkto tk - f) * (tkcount tk)
+        y = tkto tk - tkfrom tk
+        t' = max t (tkto tk) in
+    tk {
+      tkfrom = f
+    , tkto = t'
+    , tkcount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
+    , tkrecent = scale f t' (tkrecent tk)
+    , tktop = scale f t' (tktop tk)
+    }
+
+instance Timed Entry where
+  scale f _ e | f <= (efrom e) = e
+  scale f _ e =
+    let x = (eto e - f) * (ecount e)
+        y = eto e - efrom e in
+    e {
+    efrom = f
+  , ecount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
+  }

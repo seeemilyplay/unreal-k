@@ -32,6 +32,7 @@ executable unreal-k
 
   default-extensions: DeriveDataTypeable,
                       FlexibleInstances,
+                      MultiParamTypeClasses,
                       OverloadedStrings,
                       ScopedTypeVariables,
                       TemplateHaskell,
