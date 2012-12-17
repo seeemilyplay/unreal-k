@@ -39,7 +39,7 @@ internalSave :: Slots -> Period -> Key -> Item -> Update All ()
 internalSave s p k x = do
   All m <- get
   let v = case Map.lookup k m of
-            Nothing -> create k x
+            Nothing -> create k p x
             (Just tk) -> increment s p x tk
   put . All $ Map.insert k v m
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveDataTypeable #-}
 module TopK ( Slots
             , Period
             , Key
@@ -12,7 +13,6 @@ module TopK ( Slots
             , increment) where
 
 import Data.List
-import Data.Ord
 import Data.Typeable
 
 type Slots = Int
@@ -43,11 +43,11 @@ data TopK = TopK {
 topK :: TopK -> (Count,[(Element,Count)])
 topK tk = (tkcount tk, map (\e -> (eelement e, ecount e)) $ tktop tk)
 
-create :: Key -> Item -> TopK
-create k (e, c, t) =
+create :: Key -> Period -> Item -> TopK
+create k p (e, c, t) =
   TopK {
     tkkey = k
-  , tkfrom = t
+  , tkfrom = p
   , tkto = t
   , tkcount = c
   , tkrecent = [en]
@@ -93,8 +93,14 @@ instance Addable Entry TopK where
       tkfrom = min (efrom e) (tkfrom tk)
     , tkto = max (eto e) (tkto tk)
     , tkrecent = tkrecent'
-    , tktop = sortBy (comparing ((*) (-1) . ecount)) $ add (head tkrecent') tktop'
+    , tktop = sortBy ordering $ merge tkrecent' tktop'
     }
+    where
+      ordering :: Entry -> Entry -> Ordering
+      ordering e1 e2 =
+        case compare (ecount e2) (ecount e1) of
+          EQ -> compare (eelement e1) (eelement e2)
+          x -> x
 
 instance Addable Entry [Entry] where
   add e es =
@@ -112,6 +118,9 @@ instance Addable Entry Entry where
 
 class Mergeable a b where
   merge :: a -> b -> b
+
+instance Mergeable [Entry] [Entry] where
+  merge es es' = foldl (flip merge) es' es
 
 instance Mergeable Entry [Entry] where
   merge e es =
@@ -135,7 +144,8 @@ instance (Timed a) => Timed [a] where
 
 instance Timed TopK where
   scale f t tk | f <= (tkfrom tk) = tk {
-      tkto = max t (tkto tk)
+      tkfrom = f
+    , tkto = max t (tkto tk)
     }
   scale f t tk =
     let x = (tkto tk - f) * (tkcount tk)
