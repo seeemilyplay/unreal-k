@@ -23,13 +23,19 @@ instance ToJSON (Key, Top) where
   toJSON (k, (c,xs)) = object [
       "key" .= toJSON k
     , "count" .= toJSON c
-    , "top" .= toJSON xs
+    , "top" .= toJSON (Prelude.map (percent c) xs)
     ]
 
-instance ToJSON (Element,Count) where
-  toJSON (e, c) = object [
+type Percent = Int
+
+percent :: Count -> (Element,Count) -> (Element,Count,Percent)
+percent t (e, c) = (e, c, round $ (fromIntegral c) / (fromIntegral t) * (100.0 :: Double))
+
+instance ToJSON (Element,Count,Percent) where
+  toJSON (e, c, p) = object [
       "element" .= e
     , "count" .= c
+    , "percent" .= p
     ]
 
 sendJSON :: [(Key, Top)] -> Response String
