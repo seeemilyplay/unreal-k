@@ -82,89 +82,80 @@ cull s tk =
   , tktop = take s (tktop tk)
   }
 
-class Addable a b where
-  add :: a -> b -> b
-
-instance Addable Entry TopK where
-  add e tk =
-    let tkrecent' = add e (tkrecent tk)
-        tktop' = add e (tktop tk) in
-    tk {
-      tkfrom = min (efrom e) (tkfrom tk)
-    , tkto = max (eto e) (tkto tk)
-    , tkrecent = tkrecent'
-    , tktop = sortBy ordering $ merge tkrecent' tktop'
-    }
-    where
-      ordering :: Entry -> Entry -> Ordering
-      ordering e1 e2 =
-        case compare (ecount e2) (ecount e1) of
-          EQ -> compare (eelement e1) (eelement e2)
-          x -> x
-
-instance Addable Entry [Entry] where
-  add e es =
-    case find ((==) (eelement e) . eelement) es of
-      Nothing -> e : es
-      Just e' -> (add e e') : filter ((/=) (eelement e) . eelement) es
-
-instance Addable Entry Entry where
-  add e e' | (eelement e) == (eelement e') = e {
-      efrom = min (efrom e) (efrom e')
-    , eto = max (eto e) (eto e')
-    , ecount = (ecount e) + (ecount e')
-    }
-  add _ _ = error "elements don't match"
-
-class Mergeable a b where
-  merge :: a -> b -> b
-
-instance Mergeable [Entry] [Entry] where
-  merge es es' = foldl (flip merge) es' es
-
-instance Mergeable Entry [Entry] where
-  merge e es =
-    case find ((==) (eelement e) . eelement) es of
-      Nothing -> e : es
-      Just e' -> (merge e e') : filter ((/=) (eelement e) . eelement) es
-
-instance Mergeable Entry Entry where
-  merge e e' | (eelement e) == (eelement e') = e {
-      efrom = min (efrom e) (efrom e')
-    , eto = max (eto e) (eto e')
-    , ecount = max (ecount e) (ecount e')
-    }
-  merge _ _ = error "elements don't match"
-
-class Timed a where
-  scale :: Time -> Time -> a -> a
-
-instance (Timed a) => Timed [a] where
-  scale f t = map (scale f t)
-
-instance Timed TopK where
-  scale f t tk | f <= (tkfrom tk) = tk {
-      tkfrom = f
-    , tkto = max t (tkto tk)
-    }
-  scale f t tk =
-    let x = (tkto tk - f) * (tkcount tk)
-        y = tkto tk - tkfrom tk
-        t' = max t (tkto tk) in
-    tk {
-      tkfrom = f
-    , tkto = t'
-    , tkcount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
-    , tkrecent = scale f t' (tkrecent tk)
-    , tktop = scale f t' (tktop tk)
-    }
-
-instance Timed Entry where
-  scale f _ e | f <= (efrom e) = e
-  scale f _ e =
-    let x = (eto e - f) * (ecount e)
-        y = eto e - efrom e in
-    e {
-    efrom = f
-  , ecount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
+add :: Entry -> TopK -> TopK
+add e tk =
+  let tkrecent' = addToEntries e (tkrecent tk)
+      tktop' = addToEntries e (tktop tk) in
+  tk {
+    tkfrom = min (efrom e) (tkfrom tk)
+  , tkto = max (eto e) (tkto tk)
+  , tkrecent = tkrecent'
+  , tktop = sortBy topKOrdering $ merge tkrecent' tktop'
   }
+
+topKOrdering :: Entry -> Entry -> Ordering
+topKOrdering e1 e2 =
+  case compare (ecount e2) (ecount e1) of
+    EQ -> compare (eelement e1) (eelement e2)
+    x -> x
+
+addToEntries :: Entry -> [Entry] -> [Entry]
+addToEntries e es =
+  case find ((==) (eelement e) . eelement) es of
+    Nothing -> e : es
+    Just e' -> (addEntries e e') : filter ((/=) (eelement e) . eelement) es
+
+addEntries :: Entry -> Entry -> Entry
+addEntries e e' | (eelement e) == (eelement e') = e {
+    efrom = min (efrom e) (efrom e')
+  , eto = max (eto e) (eto e')
+  , ecount = (ecount e) + (ecount e')
+  }
+addEntries _ _ = error "elements don't match"
+
+merge :: [Entry] ->[Entry] -> [Entry]
+merge es es' = foldl (flip mergeIntoEntries) es' es
+
+mergeIntoEntries :: Entry -> [Entry] -> [Entry]
+mergeIntoEntries e es =
+  case find ((==) (eelement e) . eelement) es of
+    Nothing -> e : es
+    Just e' -> (mergeEntries e e') : filter ((/=) (eelement e) . eelement) es
+
+mergeEntries :: Entry -> Entry -> Entry
+mergeEntries e e' | (eelement e) == (eelement e') = e {
+    efrom = min (efrom e) (efrom e')
+  , eto = max (eto e) (eto e')
+  , ecount = max (ecount e) (ecount e')
+  }
+mergeEntries _ _ = error "elements don't match"
+
+scale :: Time -> Time -> TopK -> TopK
+scale f t tk | f <= (tkfrom tk) = tk {
+    tkfrom = f
+  , tkto = max t (tkto tk)
+  }
+scale f t tk =
+  let x = (tkto tk - f) * (tkcount tk)
+      y = tkto tk - tkfrom tk
+      t' = max t (tkto tk) in
+  tk {
+    tkfrom = f
+  , tkto = t'
+  , tkcount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
+  , tkrecent = scaleEntries f $ tkrecent tk
+  , tktop = scaleEntries f $ tktop tk
+  }
+
+scaleEntries :: Time -> [Entry] -> [Entry]
+scaleEntries f = filter ((/=) 0 . ecount) . map (scaleEntry f)
+
+scaleEntry :: Time -> Entry -> Entry
+scaleEntry f e | f <= (efrom e) = e
+scaleEntry f e =
+  let x = (eto e - f) * (ecount e)
+      y = eto e - efrom e in
+  e {
+  efrom = f
+, ecount = round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
+}
