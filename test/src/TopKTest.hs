@@ -24,6 +24,9 @@ topKTests = testGroup "topK"
       , testProperty "overall count equals top k counts" prop_overall_count_equals_top_k_counts
       , testProperty "top counts are accurate" prop_top_counts_are_accurate
       ]
+    , testGroup "any topK" [
+        testProperty "overall count <= input count" prop_overall_less_than_or_equal_to_input_count
+      ]
     ]
 
 prop_overall_count_equals_input_count :: TimelessTopK -> Bool
@@ -41,6 +44,19 @@ prop_overall_count_equals_top_k_counts (Accurate tk) =
 prop_top_counts_are_accurate :: AccurateTopK -> Bool
 prop_top_counts_are_accurate (Accurate tk) =
   inputTop tk == snd (outputTopK tk)
+
+prop_overall_less_than_or_equal_to_input_count :: AnyTopK -> Bool
+prop_overall_less_than_or_equal_to_input_count (Any tk) =
+  fst (outputTopK tk) <= inputCount tk
+
+data AnyTopK = Any TopKTest.TopK
+  deriving Show
+
+instance Arbitrary AnyTopK where
+  arbitrary = do
+    s <- choose (5,100)
+    p <- choose (0,1000)
+    Any <$> generateTopK s p
 
 data TimelessTopK = Timeless TopKTest.TopK
   deriving Show
