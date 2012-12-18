@@ -16,6 +16,7 @@ module AcidServer (
   , Top) where
 
 import Data.Acid
+import Data.Acid.Memory
 import Data.SafeCopy
 import Data.Typeable
 import Control.Exception
@@ -59,12 +60,14 @@ $(makeAcidic ''All ['internalAll, 'internalSave, 'internalTop])
 
 data AcidServer = AcidServer Slots (Time -> Time) (AcidState All)
 
-withAcidServer :: Slots -> (Time -> Time) -> (AcidServer -> IO a) -> IO a
-withAcidServer s pf f = bracket (open s pf) close f
+withAcidServer :: Bool -> Slots -> (Time -> Time) -> (AcidServer -> IO a) -> IO a
+withAcidServer persist s pf f = bracket (open persist s pf) close f
 
-open :: Slots -> (Time -> Time) -> IO AcidServer
-open s pf = do
-  acid <- openLocalState (All Map.empty)
+open :: Bool -> Slots -> (Time -> Time) -> IO AcidServer
+open persist s pf = do
+  acid <- if persist
+             then openLocalState (All Map.empty)
+             else openMemoryState (All Map.empty)
   return $ AcidServer s pf acid
 
 save :: AcidServer -> Key -> Item -> IO ()

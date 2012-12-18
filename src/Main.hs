@@ -9,7 +9,7 @@ import WebServer
 
 
 main :: IO ()
-main = withAcidServer 100 (\t -> t - 36000) $ \acid -> do
+main = withAcidServer True 100 (\t -> t - 36000) $ \acid -> do
   _ <- concurrently (DataSource.listen acid (lines <$> getContents) parsePair)
                     (WebServer.start 8000 acid)
   return ()

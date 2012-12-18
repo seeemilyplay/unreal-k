@@ -27,4 +27,4 @@ infiniteData :: [(Period, Item)]
 infiniteData =
   zip [0..] $ zip3 (map show $ cycle [(1::Int)..1000])
                    (cycle [1..3])
-                   [10..]
+                   [500..]
