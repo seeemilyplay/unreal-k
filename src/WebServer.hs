@@ -34,7 +34,9 @@ instance ToJSON (Element,Count) where
 
 sendJSON :: [(Key, Top)] -> Response String
 sendJSON v =
+  let body = BS.unpack . BS.concat . BL.toChunks $ encode v in
   insertHeader HdrContentType "application/json"
+    . insertHeader HdrContentLength (show (Prelude.length body))
     $ (respond OK :: Response String) {
-        rspBody = BS.unpack . BS.concat . BL.toChunks $ encode v
+        rspBody = body
       }
