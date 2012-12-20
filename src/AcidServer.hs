@@ -4,7 +4,7 @@ module AcidServer (
   , open
   , save
   , top
-  , AcidServer.all
+  , Storage.all
   , close
   , checkpoint
   , Slots
@@ -25,9 +25,8 @@ import Control.Monad.Reader
 
 import qualified Data.Map as Map
 
+import Storage
 import TopK
-
-type Top = (Count,[(Element,Count)])
 
 data All = All !(Map.Map Key TopK)
   deriving (Show, Typeable)
@@ -70,17 +69,18 @@ open persist s pf = do
              else openMemoryState (All Map.empty)
   return $ AcidServer s pf acid
 
-save :: AcidServer -> Key -> Item -> IO ()
-save (AcidServer s pf acid) k (e,c,t) = update acid (InternalSave s (pf t) k (e,c,t))
-
-top :: AcidServer -> Key -> IO Top
-top (AcidServer _ _ acid) k = query acid (InternalTop k)
-
-all :: AcidServer -> IO [(Key, Top)]
-all (AcidServer _ _ acid) = query acid InternalAll
+checkpoint :: AcidServer -> IO ()
+checkpoint (AcidServer _ _ acid) = createCheckpoint acid
 
 close :: AcidServer -> IO ()
 close (AcidServer _ _ acid) = closeAcidState acid
 
-checkpoint :: AcidServer -> IO ()
-checkpoint (AcidServer _ _ acid) = createCheckpoint acid
+instance Storage AcidServer where
+  save (AcidServer s pf acid) k (e,c,t) =
+    update acid (InternalSave s (pf t) k (e,c,t))
+
+  top (AcidServer _ _ acid) k =
+    query acid (InternalTop k)
+
+  all (AcidServer _ _ acid) =
+    query acid InternalAll

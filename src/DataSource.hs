@@ -1,24 +1,33 @@
-module DataSource (listen, parsePair) where
+module DataSource (listen, parsePair, parseTriplet) where
 
 import Data.Functor
 import Data.UnixTime
 
-import AcidServer
+import Storage
 
 
-listen :: AcidServer -> IO [a] -> (Time -> a -> [(Key, Item)]) -> IO ()
-listen acid source parse = do
+listen :: (Storage s) => s -> IO [a] -> (Time -> a -> [(Key, Item)]) -> IO ()
+listen s source parse = do
   xs <- source
   mapM_ process xs
   return ()
   where
     process x = do
       t <- fromEnum . utSeconds <$> getUnixTime
-      mapM (\(k,i) -> save acid k i) $ parse t x
+      mapM (\(k,i) -> save s k i) $ parse t x
 
 parsePair :: Time -> String -> [(Key, Item)]
 parsePair t xs =
   case words xs of
     [] -> []
     (k:e:[]) -> [(k,(e, 1, t))]
+    _ -> []
+
+parseTriplet :: Time -> String -> [(Key, Item)]
+--todo: delete this line
+parseTriplet _ ('[':_) = []
+parseTriplet _ xs =
+  case words xs of
+    [] -> []
+    (k:e:t:[]) -> [(k,(e, 1, read t))]
     _ -> []

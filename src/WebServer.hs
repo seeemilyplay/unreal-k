@@ -7,16 +7,16 @@ import Network.URL
 import Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy as BL
 
-import AcidServer
+import Storage
 
-start :: PortNumber -> AcidServer -> IO ()
-start p acid = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
+start :: (Storage s) => PortNumber -> s -> IO ()
+start p s = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
   case url_path url of
     [] -> do
-      xs <- AcidServer.all acid
+      xs <- Storage.all s
       return $ sendJSON xs
     k -> do
-      xs <- AcidServer.top acid k
+      xs <- Storage.top s k
       return $ sendJSON [(k, xs)]
 
 instance ToJSON (Key, Top) where
