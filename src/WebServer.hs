@@ -14,10 +14,13 @@ start p s = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
   case url_path url of
     [] -> do
       xs <- Storage.all s
-      return $ sendJSON xs
+      return $ sendJSON (limit xs)
     k -> do
       xs <- Storage.top s k
       return $ sendJSON [(k, xs)]
+
+limit :: [(Key, Top)] -> [(Key, Top)]
+limit = Prelude.map (\(k,(c,xs)) -> (k, (c,Prelude.take 10 xs)))
 
 instance ToJSON (Key, Top) where
   toJSON (k, (c,xs)) = object [
