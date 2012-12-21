@@ -25,19 +25,19 @@ type Item = (Element, Count, Time)
 
 
 data Entry = Entry {
-    eelement :: Element
-  , efrom :: Time
-  , eto :: Time
-  , ecount :: Count
+    eelement :: !Element
+  , efrom :: !Time
+  , eto :: !Time
+  , ecount :: !Count
 } deriving (Show, Typeable)
 
 data TopK = TopK {
-    tkkey :: Key
-  , tkfrom :: Time
-  , tkto :: Time
-  , tkcount :: Count
-  , tkrecent :: [Entry]
-  , tktop :: [Entry]
+    tkkey :: !Key
+  , tkfrom :: !Time
+  , tkto :: !Time
+  , tkcount :: !Count
+  , tkrecent :: ![Entry]
+  , tktop :: ![Entry]
 } deriving (Show, Typeable)
 
 topK :: TopK -> (Count,[(Element,Count)])

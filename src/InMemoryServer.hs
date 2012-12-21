@@ -15,7 +15,7 @@ module InMemoryServer (
 
 import Control.Concurrent.STM
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 import Storage
 import TopK
@@ -31,20 +31,18 @@ open s pf = do
   return $ InMemoryServer s pf m
 
 instance Storage InMemoryServer where
-  save (InMemoryServer s pf tv) k x@(_,_,t) = atomically $ do
-    m <- readTVar tv
+  save (InMemoryServer s pf tv) k x@(_,_,t) = atomically . modifyTVar' tv $ \m ->
     let v = case Map.lookup k m of
-                Nothing -> create k (pf t) x
-                (Just tk) -> increment s (pf t) x tk
-    let m' = Map.insert k v m
-    writeTVar tv m'
+              Nothing -> create k (pf t) x
+              (Just tk) -> increment s (pf t) x tk in
+    Map.insert k v m
 
   top (InMemoryServer _ _ tv) k = do
-    m <- atomically $ readTVar tv
+    m <- readTVarIO tv
     case Map.lookup k m of
       Nothing -> return (0, [])
       (Just tk) -> return $ topK tk
 
   all (InMemoryServer _ _ tv) = do
-    m <- atomically $ readTVar tv
+    m <- readTVarIO tv
     return . map (\(k, v) -> (k, topK v)) $ Map.assocs m
