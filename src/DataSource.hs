@@ -29,5 +29,6 @@ parseTriplet _ ('[':_) = []
 parseTriplet _ xs =
   case words xs of
     [] -> []
-    (k:e:t:[]) -> [(k,(e, 1, read t))]
+    --todo: and the div 10 bit
+    (k:e:t:[]) -> [(k,(e, 1, fromIntegral $ (read t :: Integer) `div` 10))]
     _ -> []

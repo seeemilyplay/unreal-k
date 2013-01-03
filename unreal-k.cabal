@@ -17,11 +17,12 @@ executable unreal-k
     async,
     bytestring,
     containers                 >= 0.5,
-    http-server                >= 1.0.1,
+    http-server,
     mtl,
     network,
     safecopy,
-    stm                        >= 2.4,
+    stm,
+    template-haskell           == 2.7.0.0,
     transformers,
     unix-time,
     url
@@ -33,13 +34,7 @@ executable unreal-k
                -funbox-strict-fields
                -fno-warn-orphans
                -O2
-               -rtsopts
                -threaded
-  ghc-prof-options: -Wall
-                    -prof
-                    -fprof-auto
-                    -auto-all
-                    -with-rtsopts=-hc
 
   default-extensions: BangPatterns,
                       DeriveDataTypeable,
@@ -64,11 +59,12 @@ test-suite unreal-k-tests
     async,
     bytestring,
     containers                 >= 0.5,
-    http-server                >= 1.0.1,
+    http-server,
     mtl,
     network,
     safecopy,
-    stm                        >= 2.4,
+    stm,
+    template-haskell           == 2.7.0.0,
     transformers,
     unix-time,
     url,
@@ -108,11 +104,12 @@ benchmark unreal-k-benchmarks
     async,
     bytestring,
     containers                 >= 0.5,
-    http-server                >= 1.0.1,
+    http-server,
     mtl,
     network,
     safecopy,
-    stm                        >= 2.4,
+    stm,
+    template-haskell           == 2.7.0.0,
     transformers,
     unix-time,
     url,
