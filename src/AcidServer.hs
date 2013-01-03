@@ -25,6 +25,7 @@ import Control.Monad.Reader
 
 import qualified Data.Map as Map
 
+import Config
 import Storage
 import TopK
 
@@ -58,30 +59,30 @@ internalAll n = do
 
 $(makeAcidic ''All ['internalAll, 'internalSave, 'internalTop])
 
-data AcidServer = AcidServer Slots K (Time -> Time) (AcidState All)
+data AcidServer = AcidServer Config (AcidState All)
 
-withAcidServer :: Bool -> Slots -> K -> (Time -> Time) -> (AcidServer -> IO a) -> IO a
-withAcidServer persist s k pf f = bracket (open persist s k pf) close f
+withAcidServer :: Config -> (AcidServer -> IO a) -> IO a
+withAcidServer c f = bracket (open c) close f
 
-open :: Bool -> Slots -> K -> (Time -> Time) -> IO AcidServer
-open persist s k pf = do
-  acid <- if persist
+open :: Config -> IO AcidServer
+open c = do
+  acid <- if (cfgpersist c)
              then openLocalState (All Map.empty)
              else openMemoryState (All Map.empty)
-  return $ AcidServer s k pf acid
+  return $ AcidServer c acid
 
 checkpoint :: AcidServer -> IO ()
-checkpoint (AcidServer _ _ _ acid) = createCheckpoint acid
+checkpoint (AcidServer _ acid) = createCheckpoint acid
 
 close :: AcidServer -> IO ()
-close (AcidServer _ _ _ acid) = closeAcidState acid
+close (AcidServer _ acid) = closeAcidState acid
 
 instance Storage AcidServer where
-  save (AcidServer s _ pf acid) k (e,c,t) =
-    update acid (InternalSave s (pf t) k (e,c,t))
+  save (AcidServer c acid) k it@(_,_,t) =
+    update acid (InternalSave (cfgslots c) ((cfgperiod c) t) k it)
 
-  top (AcidServer _ n _ acid) k =
-    query acid (InternalTop n k)
+  top (AcidServer c acid) k =
+    query acid (InternalTop (cfgk c) k)
 
-  all (AcidServer _ n _ acid) =
-    query acid (InternalAll n)
+  all (AcidServer c acid) =
+    query acid (InternalAll (cfgk c))

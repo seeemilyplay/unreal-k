@@ -18,32 +18,33 @@ import Control.Concurrent.STM
 
 import qualified Data.Map.Strict as Map
 
+import Config
 import Storage
 import TopK
 
-data InMemoryServer = InMemoryServer Slots K (Time -> Time) (TVar (Map.Map Key TopK))
+data InMemoryServer = InMemoryServer Config (TVar (Map.Map Key TopK))
 
-withInMemoryServer :: Slots -> K -> (Time -> Time) -> (InMemoryServer -> IO a) -> IO a
-withInMemoryServer s k pf f = open s k pf >>= f
+withInMemoryServer :: Config -> (InMemoryServer -> IO a) -> IO a
+withInMemoryServer c f = open c >>= f
 
-open :: Slots -> K -> (Time -> Time) -> IO InMemoryServer
-open s k pf = do
+open :: Config -> IO InMemoryServer
+open c = do
   m <- atomically $ newTVar Map.empty
-  return $ InMemoryServer s k pf m
+  return $ InMemoryServer c m
 
 instance Storage InMemoryServer where
-  save (InMemoryServer s _ pf tv) k x@(_,_,t) = atomically . modifyTVar' tv $ \m ->
+  save (InMemoryServer c tv) k x@(_,_,t) = atomically . modifyTVar' tv $ \m ->
     let v = case Map.lookup k m of
-              Nothing -> create s k x
-              (Just tk) -> add (pf t) x tk in
+              Nothing -> create (cfgslots c) k x
+              (Just tk) -> add ((cfgperiod c) t) x tk in
     Map.insert k v m
 
-  top (InMemoryServer _ n _ tv) k = do
+  top (InMemoryServer c tv) k = do
     m <- readTVarIO tv
     case Map.lookup k m of
       Nothing -> return (0, 0, 0, [])
-      (Just tk) -> return $ topK n tk
+      (Just tk) -> return $ topK (cfgk c) tk
 
-  all (InMemoryServer _ n _ tv) = do
+  all (InMemoryServer c tv) = do
     m <- readTVarIO tv
-    return . map (\(k, v) -> (k, topK n v)) $ Map.assocs m
+    return . map (\(k, v) -> (k, topK (cfgk c) v)) $ Map.assocs m
