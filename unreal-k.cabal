@@ -24,8 +24,7 @@ executable unreal-k
     stm                        >= 2.4,
     transformers,
     unix-time,
-    url,
-    template-haskell           == 2.7.0.0
+    url
 
   ghc-options: -main-is Main
                -threaded
@@ -77,8 +76,7 @@ test-suite unreal-k-tests
     test-framework-quickcheck2,
     test-framework-hunit,
     HUnit,
-    QuickCheck,
-    template-haskell           == 2.7.0.0
+    QuickCheck
 
   ghc-options: -main-is TestMain
                -threaded
@@ -118,8 +116,7 @@ benchmark unreal-k-benchmarks
     transformers,
     unix-time,
     url,
-    criterion,
-    template-haskell           == 2.7.0.0
+    criterion
 
   ghc-options: -main-is BenchmarkMain
                -threaded

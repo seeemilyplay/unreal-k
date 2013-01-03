@@ -13,7 +13,7 @@ module Storage (
 
 import TopK
 
-type Top = (Count,[(Element,Count)])
+type Top = (Count,Time,Time,[(Element,Count)])
 
 class Storage a where
 

@@ -10,7 +10,7 @@ import WebServer
 
 
 main :: IO ()
-main = withInMemoryServer 100 (\t -> t - 86400) $ \s -> do
+main = withInMemoryServer 10000 10 (\t -> t - 86400) $ \s -> do
   _ <- concurrently (DataSource.listen s (lines <$> getContents) parseTriplet)
                     (WebServer.start 8000 s)
   return ()

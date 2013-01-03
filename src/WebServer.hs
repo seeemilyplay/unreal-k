@@ -4,6 +4,7 @@ import Data.Aeson
 import Network.HTTP.Server
 import Network.Socket.Internal
 import Network.URL
+import Data.UnixTime
 import Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy as BL
 
@@ -14,17 +15,16 @@ start p s = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
   case url_path url of
     [] -> do
       xs <- Storage.all s
-      return $ sendJSON (limit xs)
+      return $ sendJSON xs
     k -> do
       xs <- Storage.top s k
       return $ sendJSON [(k, xs)]
 
-limit :: [(Key, Top)] -> [(Key, Top)]
-limit = Prelude.map (\(k,(c,xs)) -> (k, (c,Prelude.take 10 xs)))
-
 instance ToJSON (Key, Top) where
-  toJSON (k, (c,xs)) = object [
+  toJSON (k, (c,f,t,xs)) = object [
       "key" .= toJSON k
+    , "from" .= toJSON (formatUnixTimeGMT "%Y-%m-%d %H:%M:%S" . fromEpochTime $ fromIntegral f)
+    , "to" .= toJSON (formatUnixTimeGMT "%Y-%m-%d %H:%M:%S" . fromEpochTime $ fromIntegral t)
     , "count" .= toJSON c
     , "top" .= toJSON (Prelude.map (percent c) xs)
     ]
