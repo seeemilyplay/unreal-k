@@ -48,10 +48,9 @@ create s k it@(_, c, t) =
   }
 
 add :: Period -> Item -> TopK -> TopK
-add _ (_, _, t) tk | t < tkfrom tk = tk
 add p it@(_, c, t) tk = scale p $ TopK {
     key = key tk
-  , tkfrom = tkfrom tk
+  , tkfrom = min t (tkfrom tk)
   , tkto = max t (tkto tk)
   , tkcount = (tkcount tk) + c
   , tkentries = E.add (toEntry it) (tkentries tk)
