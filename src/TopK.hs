@@ -57,15 +57,14 @@ add p it@(_, c, t) tk = scale p $ TopK {
   }
 
 lag :: E.Time
-lag = 10 * 60 * 1000 -- ten minutes
+lag = 10 * 60 -- ten minutes
 
 scale :: E.Time -> TopK -> TopK
 scale f tk | tkfrom tk + lag < f = TopK {
     key = key tk
   , tkfrom = f
   , tkto = tkto tk
-  , tkcount = round $ (fromIntegral ((tkto tk - f) * (tkcount tk)) :: Double) /
-                         (fromIntegral (tkto tk - tkfrom tk) :: Double)
+  , tkcount = E.scaleCount f (tkfrom tk) (tkto tk) (tkcount tk)
   , tkentries = E.scale f $ tkentries tk
   }
 scale _ tk = tk

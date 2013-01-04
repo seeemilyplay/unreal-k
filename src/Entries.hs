@@ -10,6 +10,7 @@ module Entries(
   , empty
   , add
   , scale
+  , scaleCount
   , topK
   ) where
 
@@ -96,12 +97,22 @@ scale f es = Map.foldr scaleEntry es (entries es)
     scaleEntry :: Entry -> Entries -> Entries
     scaleEntry e es' | f <= from e = es'
     scaleEntry e es' = flip insert (delete e es') $ Entry {
-      element = element e
-    , from = f
-    , to = to e
-    , count = round $ (fromIntegral ((to e - f) * (count e)) :: Double) /
-                      (fromIntegral (to e - from e) :: Double)
-    }
+        element = element e
+      , from = f
+      , to = to e
+      , count = scaleCount f (from e) (to e) (count e)
+      }
+
+-- utility function for scaling counts to time
+scaleCount :: Time -> Time -> Time -> Count -> Count
+scaleCount newfrom oldfrom theto oldcount =
+  let f' = (fromIntegral oldfrom) :: Integer
+      t = (fromIntegral theto) :: Integer
+      f = (fromIntegral newfrom) :: Integer
+      c' = (fromIntegral oldcount) :: Integer
+      x = (t - f) * c'
+      y = t - f'
+  in round $ ((fromIntegral x) :: Double) / ((fromIntegral y) :: Double)
 
 topK :: K -> Entries -> [Entry]
 topK k es = take k . catMaybes . map (flip Map.lookup (entries es) . snd) . reverse . Set.toAscList $ large es
