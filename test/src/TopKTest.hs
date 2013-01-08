@@ -103,7 +103,7 @@ generateTopK s p = do
       , inputCount = sum cs
       , inputTop = reverse . sortBy (comparing snd)
                            . map (\xs' -> ([fst (head xs')], sum $ map snd xs'))
-                           . groupBy (`on` fst)
+                           . groupBy ((==) `on` fst)
                            . sortBy (comparing fst) $ zip es cs
       , outputTopK = result
       , outputCount = (\(t,_,_,_) -> t) result
