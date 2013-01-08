@@ -18,7 +18,7 @@ start p s = serverWith defaultConfig{ srvPort = p } $ \_ url _ ->
       return $ sendJSON xs
     k -> do
       xs <- Storage.top s k
-      return $ sendJSON [(k, xs)]
+      return $ sendJSON (k, xs)
 
 instance ToJSON (Key, Top) where
   toJSON (k, (c,f,t,xs)) = object [
@@ -41,10 +41,11 @@ instance ToJSON (Element,Count,Percent) where
     , "percent" .= p
     ]
 
-sendJSON :: [(Key, Top)] -> Response String
+sendJSON :: (ToJSON a) => a -> Response String
 sendJSON v =
   let body = BS.unpack . BS.concat . BL.toChunks $ encode v in
   insertHeader HdrContentType "application/json"
+    . insertHeader (HdrCustom "Access-Control-Allow-Origin") "*"
     . insertHeader HdrContentLength (show (Prelude.length body))
     $ (respond OK :: Response String) {
         rspBody = body

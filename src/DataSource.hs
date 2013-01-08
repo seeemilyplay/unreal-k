@@ -24,11 +24,9 @@ parsePair t xs =
     _ -> []
 
 parseTriplet :: Time -> String -> [(Key, Item)]
---todo: delete this line
-parseTriplet _ ('[':_) = []
 parseTriplet _ xs =
   case words xs of
     [] -> []
     --todo: and the div 10 bit
-    (k:e:t:[]) -> [(k,(e, 1, fromIntegral $ (read t :: Integer) `div` 10))]
+    (k:e:t:[]) -> [(k,(e, 1, fromIntegral $ (read t :: Integer)))]
     _ -> []
