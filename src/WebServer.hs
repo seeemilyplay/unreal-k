@@ -32,7 +32,7 @@ instance ToJSON (Key, Top) where
 type Percent = Int
 
 percent :: Count -> (Element,Count) -> (Element,Count,Percent)
-percent t (e, c) = (e, c, round $ (fromIntegral c) / (fromIntegral t) * (100.0 :: Double))
+percent t (e, c) = (e, c, round $ fromIntegral c / fromIntegral t * (100.0 :: Double))
 
 instance ToJSON (Element,Count,Percent) where
   toJSON (e, c, p) = object [

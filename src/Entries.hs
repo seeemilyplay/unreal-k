@@ -51,12 +51,12 @@ add :: Entry -> Entries -> Entries
 add e es =
   case Map.lookup (element e) (entries es) of
     Just e' ->
-      flip insert (delete e' es) $ Entry {
+      insert Entry {
         element = element e
       , from = min (from e) (from e')
       , to = max (to e) (to e')
-      , count = (count e) + (count e')
-      }
+      , count = count e + count e'
+      } (delete e' es)
     Nothing -> insert e es
 
 insert :: Entry -> Entries -> Entries
@@ -77,7 +77,7 @@ insert e es =
   }
   where
     boundedInsert :: (Ord a, Show a) => a -> Set.Set a -> (Maybe a, Set.Set a)
-    boundedInsert x xs | Set.size xs < (slots es) = (Nothing, Set.insert x xs)
+    boundedInsert x xs | Set.size xs < slots es = (Nothing, Set.insert x xs)
     boundedInsert x xs =
       case Set.findMin xs of
         minx | x > minx -> (Just minx, Set.insert x $ Set.delete minx xs)
@@ -96,23 +96,23 @@ scale f es = Map.foldr scaleEntry es (entries es)
   where
     scaleEntry :: Entry -> Entries -> Entries
     scaleEntry e es' | f <= from e = es'
-    scaleEntry e es' = flip insert (delete e es') $ Entry {
+    scaleEntry e es' = insert  Entry {
         element = element e
       , from = f
       , to = to e
       , count = scaleCount f (from e) (to e) (count e)
-      }
+      } (delete e es')
 
 -- utility function for scaling counts to time
 scaleCount :: Time -> Time -> Time -> Count -> Count
 scaleCount newfrom oldfrom theto oldcount =
-  let f' = (fromIntegral oldfrom) :: Integer
-      t = (fromIntegral theto) :: Integer
-      f = (fromIntegral newfrom) :: Integer
-      c' = (fromIntegral oldcount) :: Integer
+  let f' = fromIntegral oldfrom :: Integer
+      t = fromIntegral theto :: Integer
+      f = fromIntegral newfrom :: Integer
+      c' = fromIntegral oldcount :: Integer
       x = (t - f) * c'
       y = t - f'
-  in round $ ((fromIntegral x) :: Double) / ((fromIntegral y) :: Double)
+  in round $ (fromIntegral x :: Double) / (fromIntegral y :: Double)
 
 topK :: K -> Entries -> [Entry]
-topK k es = take k . catMaybes . map (flip Map.lookup (entries es) . snd) . reverse . Set.toAscList $ large es
+topK k es = take k . mapMaybe (flip Map.lookup (entries es) . snd) . reverse . Set.toAscList $ large es

@@ -14,6 +14,7 @@ module TopK ( Period
             , create
             , add) where
 
+import Control.Arrow
 import Data.Typeable
 import qualified Entries as E
 
@@ -30,7 +31,7 @@ data TopK = TopK {
 } deriving (Show, Typeable)
 
 topK :: E.K -> TopK -> (E.Count,E.Time,E.Time,[(E.Element,E.Count)])
-topK k tk = (tkcount tk, tkfrom tk, tkto tk, map (\e -> (E.element e, E.count e)) . E.topK k $ tkentries tk)
+topK k tk = (tkcount tk, tkfrom tk, tkto tk, map (E.element &&& E.count) . E.topK k $ tkentries tk)
 
 toEntry :: Item -> E.Entry
 toEntry (e, c, t) = E.Entry {
@@ -48,11 +49,11 @@ create s k it@(_, c, t) =
   }
 
 add :: Period -> Item -> TopK -> TopK
-add p it@(_, c, t) tk = scale p $ TopK {
+add p it@(_, c, t) tk = scale p TopK {
     key = key tk
   , tkfrom = min t (tkfrom tk)
   , tkto = max t (tkto tk)
-  , tkcount = (tkcount tk) + c
+  , tkcount = tkcount tk + c
   , tkentries = E.add (toEntry it) (tkentries tk)
   }
 

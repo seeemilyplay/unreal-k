@@ -19,6 +19,7 @@ import Data.Acid
 import Data.Acid.Memory
 import Data.SafeCopy
 import Data.Typeable
+import Control.Arrow
 import Control.Exception
 import Control.Monad.State
 import Control.Monad.Reader
@@ -55,18 +56,18 @@ internalTop n k = do
 internalAll :: K -> Query All [(Key, Top)]
 internalAll n = do
   All m <- ask
-  return .map (\(k, v) -> (k, topK n v)) $ Map.assocs m
+  return . map (second (topK n)) $ Map.assocs m
 
 $(makeAcidic ''All ['internalAll, 'internalSave, 'internalTop])
 
 data AcidServer = AcidServer Config (AcidState All)
 
 withAcidServer :: Config -> (AcidServer -> IO a) -> IO a
-withAcidServer c f = bracket (open c) close f
+withAcidServer c = bracket (open c) close
 
 open :: Config -> IO AcidServer
 open c = do
-  acid <- if (cfgpersist c)
+  acid <- if cfgpersist c
              then openLocalState (All Map.empty)
              else openMemoryState (All Map.empty)
   return $ AcidServer c acid
@@ -79,7 +80,7 @@ close (AcidServer _ acid) = closeAcidState acid
 
 instance Storage AcidServer where
   save (AcidServer c acid) k it@(_,_,t) =
-    update acid (InternalSave (cfgslots c) ((cfgperiod c) t) k it)
+    update acid (InternalSave (cfgslots c) (cfgperiod c t) k it)
 
   top (AcidServer c acid) k =
     query acid (InternalTop (cfgk c) k)

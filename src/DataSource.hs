@@ -14,7 +14,7 @@ listen s source parse = do
   where
     process x = do
       t <- fromEnum . utSeconds <$> getUnixTime
-      mapM (\(k,i) -> save s k i) $ parse t x
+      mapM (uncurry (save s)) $ parse t x
 
 parsePair :: Time -> String -> [(Key, Item)]
 parsePair t xs =
@@ -28,5 +28,5 @@ parseTriplet _ xs =
   case words xs of
     [] -> []
     --todo: and the div 10 bit
-    (k:e:t:[]) -> [(k,(e, 1, fromIntegral $ (read t :: Integer)))]
+    (k:e:t:[]) -> [(k,(e, 1, fromIntegral (read t :: Integer)))]
     _ -> []

@@ -14,6 +14,7 @@ module InMemoryServer (
   , K
   , Top) where
 
+import Control.Arrow
 import Control.Concurrent.STM
 
 import qualified Data.Map.Strict as Map
@@ -36,7 +37,7 @@ instance Storage InMemoryServer where
   save (InMemoryServer c tv) k x@(_,_,t) = atomically . modifyTVar' tv $ \m ->
     let v = case Map.lookup k m of
               Nothing -> create (cfgslots c) k x
-              (Just tk) -> add ((cfgperiod c) t) x tk in
+              (Just tk) -> add (cfgperiod c t) x tk in
     Map.insert k v m
 
   top (InMemoryServer c tv) k = do
@@ -47,4 +48,4 @@ instance Storage InMemoryServer where
 
   all (InMemoryServer c tv) = do
     m <- readTVarIO tv
-    return . map (\(k, v) -> (k, topK (cfgk c) v)) $ Map.assocs m
+    return . map (second (topK (cfgk c))) $ Map.assocs m

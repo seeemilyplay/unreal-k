@@ -4,6 +4,7 @@ module TopKTest (
 
 import Control.Applicative
 import Control.Monad
+import Data.Function
 import Data.List
 import Data.Ord
 import Test.Framework
@@ -31,7 +32,7 @@ topKTests = testGroup "topK"
 
 prop_overall_count_equals_input_count :: TimelessTopK -> Bool
 prop_overall_count_equals_input_count (Timeless tk) =
-  inputCount tk == (outputCount tk)
+  inputCount tk == outputCount tk
 
 prop_overall_count_greater_than_or_equal_to_top_k_counts :: TimelessTopK -> Bool
 prop_overall_count_greater_than_or_equal_to_top_k_counts (Timeless tk) =
@@ -47,7 +48,7 @@ prop_top_counts_are_accurate (Accurate tk) =
 
 prop_overall_less_than_or_equal_to_input_count :: AnyTopK -> Bool
 prop_overall_less_than_or_equal_to_input_count (Any tk) =
-  (outputCount tk) <= inputCount tk
+  outputCount tk <= inputCount tk
 
 data AnyTopK = Any TopKTest.TopK
   deriving Show
@@ -92,9 +93,9 @@ generateTopK s p = do
     cs <- replicateM n $ choose (1, 10)
     ts <- replicateM n arbitrary
     let xs = map (\(e,c,NonNegative t) -> ([e],c,t)) $ zip3 es cs ts
-        tk = foldl (\tk' x -> add p x tk') (create s k $ head xs) (tail xs)
+        tk = foldl (flip (add p)) (create s k $ head xs) (tail xs)
         result = topK 100000 tk
-    return $ TopKTest.TopK {
+    return TopKTest.TopK {
         inputKey = k
       , inputData = xs
       , inputSlots = s
@@ -102,7 +103,7 @@ generateTopK s p = do
       , inputCount = sum cs
       , inputTop = reverse . sortBy (comparing snd)
                            . map (\xs' -> ([fst (head xs')], sum $ map snd xs'))
-                           . groupBy (\e1 e2 -> fst e1 == fst e2)
+                           . groupBy (`on` fst)
                            . sortBy (comparing fst) $ zip es cs
       , outputTopK = result
       , outputCount = (\(t,_,_,_) -> t) result

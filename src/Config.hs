@@ -9,7 +9,7 @@ data Config = Config {
 , cfguseboxtime :: Bool
 , cfgslots :: Slots
 , cfgk :: K
-, cfgperiod :: (Time -> Time)
+, cfgperiod :: Time -> Time
 }
 
 defaultPersist :: Bool
@@ -48,13 +48,13 @@ configFromArgs = do
       k = argNumber args "-k" defaultK
       t = argNumber args "-t" defaultTime
 
-  putStrLn $ "Running with:"
+  putStrLn   "Running with:"
   putStrLn $ "  (-p) Persist      => " ++ show p
   putStrLn $ "  (-b) Use box time => " ++ show b
   putStrLn $ "  (-s) Slots        => " ++ show s
   putStrLn $ "  (-k) K            => " ++ show k
   putStrLn $ "  (-t) Time frame   => " ++ show t
-  return $ Config {
+  return Config {
     cfgpersist = p
   , cfguseboxtime = b
   , cfgslots = s
